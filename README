@@ -1,0 +1,12 @@
+User FOO's crontab:
+
+  MAILTO=""
+  # m h  dom mon dow   command
+  45 * * * * /home/FOO/bin/do-rsyncrypto.user
+
+
+Root's crontab:
+  # m h  dom mon dow   command
+  MAILTO=""
+  45 * * * *      root    /root/do-rsyncrypto
+~                                                 

@@ -1,0 +1,59 @@
+#!/bin/bash
+
+MASTER_KEY_DIR=/root/backup/rsync-master-keys
+PRIV_KEY="${MASTER_KEY_DIR}/remote.key"
+KEY_CRT="${MASTER_KEY_DIR}/remote.crt"
+
+CYPHERTEXT_DIR=/var/cache/remote-backup
+FILE_KEYS_DIR=/var/cache/rb-secrets
+
+FILE_LIST_FILE=/root/backup/filelist # This dir should be protected
+
+SECRET_DIRS="/etc/ /lib/ /root/"
+
+FIND=/usr/bin/find
+RSYNCRYPTO=/usr/bin/rsyncrypto
+RSVERBOSITY=""
+
+if ! [[ -d "${CYPHERTEXT_DIR}" ]]; then
+    echo >&2 "Missing cyphertext directory: ${CYPHERTEXT_DIR}."
+    exit -1
+fi
+
+if ! [[ -r "${PRIV_KEY}" ]]; then
+    echo >&2 "Missing (or unreadable) private key: ${PRIV_KEY}"
+    exit -1
+fi
+
+if ! [[ -r "${KEY_CRT}" ]]; then
+    echo >&2 "Missing (or unreadable) certificate: ${KEY_CRT}"
+    exit -1
+fi
+
+if ! [[ -d "${FILE_KEYS_DIR}" ]]; then
+    echo >&2 "Missing file keys directory: ${FILE_KEYS_DIR}."
+    exit -1
+fi
+
+if ! [[ -O "${FILE_KEYS_DIR}" ]]; then
+    echo >&2 "File keys directory ${FILE_KEYS_DIR} is not mine!"
+    exit -1
+fi
+/bin/chmod 0700 "${FILE_KEYS_DIR}"
+
+
+# Find directories which are not world readable (and chdirable) and
+# files which are note world readable
+rm -f ${FILE_LIST_FILE}
+$FIND ${SECRET_DIRS} -xdev \( -type d -not -perm -005 -prune -printf "%p/\n" \) -or \( -type f -not -perm -004 -printf "%p\n" \) > ${FILE_LIST_FILE}
+
+
+# Run rsyncrypto on those files
+$RSYNCRYPTO $RSVERBOSITY --trim=0 --delete --delete-keys --filelist ${FILE_LIST_FILE} ${CYPHERTEXT_DIR} ${FILE_KEYS_DIR} ${KEY_CRT}
+
+# A couple of common-sense checks: 
+# cyphertext is world-readable -- that's the whole point
+$FIND ${CYPHERTEXT_DIR} \( -not -perm -0004 \) -or \( -type d -not -perm -0005 \) -printf "Oops! Cyphertext not accessible: %p\n" >&2
+
+# file keys are secret -- otherwise no secrecy at all:  group and other must have no access, and must be owned by root
+$FIND ${FILE_KEYS_DIR} -perm /0077 -or -not -uid 0 -printf "Error! Keys not secret: %p\n" >&2
