@@ -1,3 +1,32 @@
+Suppose you want to use rsnapshot to backup host A onto host B's
+storage.  The standard configurations all require a passwordless
+remote root ssh log-in, because rsnapshot really wants to be root on
+both the source and destination machines.  There are facilities for
+limiting what the remote root can do, but the idea might still give
+you the heebie-jeebies.
+
+Here's an alternative solution: rsnapshot runs as root on host B, but
+pulls from host A as a non-root user.  This user, by definition, can
+only succesfully backup world-readable (or group-readable for the
+right group) files.  To facilitate backing up other files, a cron job
+on host A users rsyncrypto to make encrypted but publicly-readable
+versions of the non-world-readable files.  The cyphertext copies are
+then backed up remotely by rsnapshot.
+
+Benefits:
+ * No need for remote root log in anywhere
+ * Host A can keep file contents secret from host B
+
+Disadvantages:
+ * There's an extra step in restoring from rsnapshot:  The snapshot 
+   contains the cyphertext, you have to use the rsyncrypto tools to 
+   recover the plain text.
+ * You have to manage the rsyncrypto keys.  If host A fully trusts 
+   host B, the keys can be backed up as part of rsnapshot's normal 
+   operation, but otherwise host A needs a separate key backup.
+
+It's not perfect, but it's a workable approach.
+
 User FOO's crontab:
 
   MAILTO=""
@@ -9,4 +38,4 @@ Root's crontab:
   # m h  dom mon dow   command
   MAILTO=""
   45 * * * *      root    /root/do-rsyncrypto
-~                                                 
+                                                 
