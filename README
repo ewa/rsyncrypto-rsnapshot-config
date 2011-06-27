@@ -1,3 +1,6 @@
+  Rsnapshot - Rsyncrypto integration README
+  -----------------------------------------
+
 Suppose you want to use rsnapshot to backup host A onto host B's
 storage.  The standard configurations all require a passwordless
 remote root ssh log-in, because rsnapshot really wants to be root on
@@ -38,4 +41,15 @@ Root's crontab:
   # m h  dom mon dow   command
   MAILTO=""
   45 * * * *      root    /root/do-rsyncrypto
-                                                 
+
+
+The files do-rsyncrypto and do-rsyncrypto.user are part of this Git
+repository.  They're just templates; your configuration will probably
+differ.  There's one main gotcha with the rsyncrypto configuration:
+You must make sure that the cyphertext files are NOT included in
+rsyncrypto's backups, or else you'll have (exponentially many)
+encrypted backups of your encrypted backups of...
+
+--
+Eric Anderson
+http://www.ece.cmu.edu/~andersoe/
